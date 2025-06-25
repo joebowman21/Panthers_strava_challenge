@@ -66,4 +66,5 @@ def callback():
     return '✅ Activities fetched and exported to Excel (strava_activities.xlsx). You can close this tab.'
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))  # Render provides the correct port
+    app.run(host='0.0.0.0', port=port)
