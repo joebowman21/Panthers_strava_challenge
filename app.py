@@ -36,7 +36,7 @@ def callback():
         'https://www.strava.com/oauth/token',
         data={
             'client_id': '165742',
-            'client_secret': 'd0015e5854fc1797ac8997d7bfb455f571ec3376',
+            'client_secret': '92d0c671ef9b1fd0652eb5ef8de8c12393f2d152',
             'code': code,
             'grant_type': 'authorization_code',
             'redirect_uri': 'https://panthers-strava-challenge.onrender.com/callback' 
