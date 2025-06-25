@@ -15,17 +15,23 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    logging.info("this completed successfully")
+    logging.info("Redirecting to Strava authorization URL")
     return redirect(
-        f"https://www.strava.com/oauth/authorize?client_id=165742"
-        f"&response_type=code&redirect_uri=https://panthers-strava-challenge.onrender.com/callback"
-        f"&scope=read,activity:read_all&approval_prompt=auto"
+        "https://www.strava.com/oauth/authorize"
+        "?client_id=165742"
+        "&response_type=code"
+        "&redirect_uri=https://panthers-strava-challenge.onrender.com/callback"
+        "&scope=read,activity:read_all"
+        "&approval_prompt=auto"
     )
-
+    
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
     logging.info(code)
+    if not code:
+        logging.error("No authorization code found in request")
+        return "❌ No authorization code found.", 400
     # Step 1: Exchange code for access token
     logging.info("exchanging code for access token")
     logging.info(code)
@@ -50,29 +56,3 @@ def callback():
         f.write(f"{athlete_id},{refresh_token}\n")
 
     return f"✅ User {athlete_id} connected successfully!"
-
-    # # Step 2: Fetch activities
-    # activities_response = requests.get(
-    #     'https://www.strava.com/api/v3/athlete/activities',
-    #     headers={'Authorization': f'Bearer {access_token}'}
-    # ).json()
-
-    # # Step 3: Extract and format activity data
-    # activities = []
-    # for act in activities_response:
-    #     activities.append({
-    #         'Name': act.get('name'),
-    #         'Type': act.get('type'),
-    #         'Distance (km)': round(act.get('distance', 0) / 1000, 2),
-    #         'Time (min)': round(act.get('elapsed_time', 0) / 60, 2),
-    #         'Date': act.get('start_date_local')
-    #     })
-
-    # df = pd.DataFrame(activities)
-    # df.to_excel('strava_activities.xlsx', index=False)
-
-    # return '✅ Activities fetched and exported to Excel (strava_activities.xlsx). You can close this tab.'
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # Render provides the correct port
-    app.run(host='0.0.0.0', port=port)
