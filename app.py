@@ -14,7 +14,7 @@ app = Flask(__name__)
 def index():
     return redirect(
         f"https://www.strava.com/oauth/authorize?client_id=165742"
-        f"&response_type=code&redirect_uri=https://panthers-strava-challenge.onrender.com/callback"
+        f"&response_type=code&redirect_uri={REDIRECT_URI}"
         f"&scope=read,activity:read_all&approval_prompt=auto"
     )
 
@@ -29,7 +29,8 @@ def callback():
             'client_id': '165743',
             'client_secret': 'd0015e5854fc1797ac8997d7bfb455f571ec3376',
             'code': code,
-            'grant_type': 'authorization_code'
+            'grant_type': 'authorization_code',
+            'redirect_uri': REDIRECT_URI 
         }
     ).json()
     print(token_response)
