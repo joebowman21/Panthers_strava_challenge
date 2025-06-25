@@ -4,9 +4,9 @@ import pandas as pd
 import os
 
 # Replace these with your Strava app values
-CLIENT_ID = os.getenV('CLIENT_ID')
-CLIENT_SECRET = os.getenV('CLIENT_SECRET')
-REDIRECT_URI = os.getenV('REDIRECT_URI')
+CLIENT_ID = os.getenv('CLIENT_ID')
+CLIENT_SECRET = os.getenv('CLIENT_SECRET')
+REDIRECT_URI = os.getenv('REDIRECT_URI')
 
 app = Flask(__name__)
 
