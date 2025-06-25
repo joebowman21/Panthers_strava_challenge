@@ -7,9 +7,6 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 # Replace these with your Strava app values
-CLIENT_ID = os.getenv('CLIENT_ID')
-CLIENT_SECRET = os.getenv('CLIENT_SECRET')
-REDIRECT_URI = os.getenv('REDIRECT_URI')
 
 app = Flask(__name__)
 
@@ -27,6 +24,7 @@ def index():
     
 @app.route('/callback')
 def callback():
+    logging.info("beginnging call back")
     code = request.args.get('code')
     logging.info(code)
     if not code:
@@ -34,8 +32,6 @@ def callback():
         return "❌ No authorization code found.", 400
     # Step 1: Exchange code for access token
     logging.info("exchanging code for access token")
-    logging.info(code)
-    logging.info(REDIRECT_URI)
     token_response = requests.post(
         'https://www.strava.com/oauth/token',
         data={
