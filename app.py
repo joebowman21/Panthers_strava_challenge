@@ -1,11 +1,12 @@
 from flask import Flask, request, redirect
 import requests
 import pandas as pd
+import os
 
 # Replace these with your Strava app values
-CLIENT_ID = '165742'
-CLIENT_SECRET = '92d0c671ef9b1fd0652eb5ef8de8c12393f2d152'
-REDIRECT_URI = 'https://panthers-strava-challenge.onrender.com/callback'
+CLIENT_ID = os.getenV('CLIENT_ID')
+CLIENT_SECRET = os.getenV('CLIENT_SECRET')
+REDIRECT_URI = os.getenV('REDIRECT_URI')
 
 app = Flask(__name__)
 
