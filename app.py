@@ -13,7 +13,7 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     return redirect(
-        f"https://www.strava.com/oauth/authorize?client_id=165743"
+        f"https://www.strava.com/oauth/authorize?client_id=165742"
         f"&response_type=code&redirect_uri=https://panthers-strava-challenge.onrender.com/callback"
         f"&scope=read,activity:read_all&approval_prompt=auto"
     )
