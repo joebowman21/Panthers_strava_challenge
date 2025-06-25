@@ -46,7 +46,10 @@ def callback():
     access_token = token_response['access_token']
     refresh_token = token_response['refresh_token']
     athlete_id = token_response['athlete']['id']
-
+    logging.info(access_token)
+    logging.info(refresh_token)
+    logging.info(athlete_id)
+    
     # Save refresh token (e.g., to a file or DB)
     with open('tokens.csv', 'a') as f:
         f.write(f"{athlete_id},{refresh_token}\n")
