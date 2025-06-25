@@ -17,11 +17,12 @@ def index():
         f"&response_type=code&redirect_uri=https://panthers-strava-challenge.onrender.com/callback"
         f"&scope=read,activity:read_all&approval_prompt=auto"
     )
+    print("this completed successfully")
 
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
-
+    print(code)
     # Step 1: Exchange code for access token
     print("exchanging code for access token")
     print(code)
@@ -29,7 +30,7 @@ def callback():
     token_response = requests.post(
         'https://www.strava.com/oauth/token',
         data={
-            'client_id': '165743',
+            'client_id': '165742',
             'client_secret': 'd0015e5854fc1797ac8997d7bfb455f571ec3376',
             'code': code,
             'grant_type': 'authorization_code',
