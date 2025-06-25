@@ -14,7 +14,7 @@ app = Flask(__name__)
 def index():
     return redirect(
         f"https://www.strava.com/oauth/authorize?client_id=165742"
-        f"&response_type=code&redirect_uri={REDIRECT_URI}"
+        f"&response_type=code&redirect_uri=https://panthers-strava-challenge.onrender.com"
         f"&scope=read,activity:read_all&approval_prompt=auto"
     )
 
@@ -23,6 +23,9 @@ def callback():
     code = request.args.get('code')
 
     # Step 1: Exchange code for access token
+    print("exchanging code for access token")
+    print(code)
+    print(REDIRECT_URI)
     token_response = requests.post(
         'https://www.strava.com/oauth/token',
         data={
@@ -30,7 +33,7 @@ def callback():
             'client_secret': 'd0015e5854fc1797ac8997d7bfb455f571ec3376',
             'code': code,
             'grant_type': 'authorization_code',
-            'redirect_uri': REDIRECT_URI 
+            'redirect_uri': 'https://panthers-strava-challenge.onrender.com' 
         }
     ).json()
     print(token_response)
