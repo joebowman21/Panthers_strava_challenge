@@ -1,67 +1,68 @@
-##test starter
+from flask import Flask, request, redirect
 import requests
-from datetime import datetime
 import pandas as pd
 
+# Replace these with your Strava app values
 CLIENT_ID = '165742'
 CLIENT_SECRET = '92d0c671ef9b1fd0652eb5ef8de8c12393f2d152'
+REDIRECT_URI = 'https://panthers-strava-challenge.onrender.com/callback'
 
-def refresh_access_token(refresh_token):
-    response = requests.post(
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return redirect(
+        f"https://www.strava.com/oauth/authorize?client_id={CLIENT_ID}"
+        f"&response_type=code&redirect_uri={REDIRECT_URI}"
+        f"&scope=read,activity:read_all&approval_prompt=auto"
+    )
+
+@app.route('/callback')
+def callback():
+    code = request.args.get('code')
+
+    # Step 1: Exchange code for access token
+    token_response = requests.post(
         'https://www.strava.com/oauth/token',
         data={
             'client_id': CLIENT_ID,
             'client_secret': CLIENT_SECRET,
-            'grant_type': 'refresh_token',
-            'refresh_token': refresh_token
+            'code': code,
+            'grant_type': 'authorization_code'
         }
     ).json()
-    return response['access_token'], response['refresh_token']
+    print(token_response)
+    access_token = token_response['access_token']
+    refresh_token = token_response['refresh_token']
+    athlete_id = token_response['athlete']['id']
 
-def fetch_today_activities(access_token):
-    headers = {'Authorization': f'Bearer {access_token}'}
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    after = int(today.timestamp())
+    # Save refresh token (e.g., to a file or DB)
+    with open('tokens.csv', 'a') as f:
+        f.write(f"{athlete_id},{refresh_token}\n")
 
-    response = requests.get(
-        f'https://www.strava.com/api/v3/athlete/activities?after={after}',
-        headers=headers
-    )
-    return response.json()
+    return f"✅ User {athlete_id} connected successfully!"
 
-def main():
-    rows = []
-    updated_tokens = []
+    # Step 2: Fetch activities
+    activities_response = requests.get(
+        'https://www.strava.com/api/v3/athlete/activities',
+        headers={'Authorization': f'Bearer {access_token}'}
+    ).json()
 
-    with open('tokens.csv', 'r') as f:
-        for line in f:
-            athlete_id, refresh_token = line.strip().split(',')
-            try:
-                access_token, new_refresh = refresh_access_token(refresh_token)
-                updated_tokens.append((athlete_id, new_refresh))
-                activities = fetch_today_activities(access_token)
+    # Step 3: Extract and format activity data
+    activities = []
+    for act in activities_response:
+        activities.append({
+            'Name': act.get('name'),
+            'Type': act.get('type'),
+            'Distance (km)': round(act.get('distance', 0) / 1000, 2),
+            'Time (min)': round(act.get('elapsed_time', 0) / 60, 2),
+            'Date': act.get('start_date_local')
+        })
 
-                for act in activities:
-                    rows.append({
-                        'Athlete ID': athlete_id,
-                        'Name': act.get('name'),
-                        'Type': act.get('type'),
-                        'Distance (km)': round(act.get('distance', 0) / 1000, 2),
-                        'Time (min)': round(act.get('elapsed_time', 0) / 60, 2),
-                        'Date': act.get('start_date_local')
-                    })
-            except Exception as e:
-                print(f"Error fetching data for user {athlete_id}: {e}")
+    df = pd.DataFrame(activities)
+    df.to_excel('strava_activities.xlsx', index=False)
 
-    # Save updated tokens
-    with open('tokens.csv', 'w') as f:
-        for aid, token in updated_tokens:
-            f.write(f"{aid},{token}\n")
-
-    # Export to Excel
-    df = pd.DataFrame(rows)
-    df.to_excel('daily_activities.xlsx', index=False)
-    print("✅ Daily activities exported to daily_activities.xlsx")
+    return '✅ Activities fetched and exported to Excel (strava_activities.xlsx). You can close this tab.'
 
 if __name__ == '__main__':
-    main()
+    app.run(debug=True)
