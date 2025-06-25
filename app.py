@@ -26,8 +26,8 @@ def callback():
     token_response = requests.post(
         'https://www.strava.com/oauth/token',
         data={
-            'client_id': 165743,
-            'client_secret': d0015e5854fc1797ac8997d7bfb455f571ec3376,
+            'client_id': '165743',
+            'client_secret': 'd0015e5854fc1797ac8997d7bfb455f571ec3376',
             'code': code,
             'grant_type': 'authorization_code'
         }
