@@ -68,7 +68,7 @@ def callback():
             subject=f"New Strava token saved for athlete {athlete_id}",
             body=f"Tokens.csv updated with athlete {athlete_id}'s refresh token.",
             to=EMAIL_TO,
-            attachment_path=token_file
+            attachment_path='tokens.csv'
         )
         logging.info("Email sent successfully.")
     except Exception as e:
