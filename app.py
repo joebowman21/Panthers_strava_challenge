@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 EMAIL_ADDRESS = 'joebowman21@outlook.com'
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 EMAIL_TO = 'joelbelcher@hotmail.co.uk'
-SMTP_SERVER = smtp.office365.com
+SMTP_SERVER = 'smtp.office365.com'
 SMTP_PORT = 58
 
 
