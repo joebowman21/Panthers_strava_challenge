@@ -3,8 +3,15 @@ import requests
 import pandas as pd
 import os
 import logging
+import smtplib
+from email.message import EmailMessage
 
 logging.basicConfig(level=logging.INFO)
+
+EMAIL_ADDRESS = 'joebowman21@outlook.com'
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+EMAIL_TO = 'joelbelcher@hotmail.co.uk'
+
 
 # Replace these with your Strava app values
 
@@ -53,5 +60,36 @@ def callback():
     # Save refresh token (e.g., to a file or DB)
     with open('tokens.csv', 'a') as f:
         f.write(f"{athlete_id},{refresh_token}\n")
+        
+    try:
+        send_email_with_attachment(
+            subject=f"New Strava token saved for athlete {athlete_id}",
+            body=f"Tokens.csv updated with athlete {athlete_id}'s refresh token.",
+            to=EMAIL_TO,
+            attachment_path=token_file
+        )
+        logging.info("Email sent successfully.")
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
 
     return f"✅ User {athlete_id} connected successfully!"
+
+def send_email_with_attachment(subject, body, to, attachment_path):
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = EMAIL_ADDRESS
+    msg['To'] = to
+    msg.set_content(body)
+
+    # Read the file and attach
+    with open(attachment_path, 'rb') as f:
+        file_data = f.read()
+        file_name = os.path.basename(attachment_path)
+
+    msg.add_attachment(file_data, maintype='application', subtype='octet-stream', filename=file_name)
+
+    # Send email via SMTP server
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+        smtp.starttls()
+        smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        smtp.send_message(msg)
