@@ -5,8 +5,10 @@ import json
 from datetime import datetime, timedelta
 
 # Your Strava app credentials
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("SECRET_ID")
+# CLIENT_ID = os.getenv("CLIENT_ID")
+# CLIENT_SECRET = os.getenv("SECRET_ID")
+CLIENT_ID = '165742'
+CLIENT_SECRET = 'd0015e5854fc1797ac8997d7bfb455f571ec3376'
 
 def refresh_access_token(refresh_token):
     print(CLIENT_ID)
