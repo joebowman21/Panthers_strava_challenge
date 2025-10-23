@@ -139,7 +139,9 @@ if __name__ == '__main__':
 
     if os.path.exists('activities.xlsx'):
         df = pd.read_excel('activities.xlsx')
+        df['start_date'] = pd.to_datetime(df['start_date'])
         max_date = df['start_date'].max()
+      
     else:
         df = pd.DataFrame()
         max_date = datetime(2000, 1, 1) 
