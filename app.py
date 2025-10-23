@@ -48,7 +48,7 @@ def callback():
             'redirect_uri': REDIRECT_URL 
         }
     ).json()
-    print(token_response)
+    logging.info(token_response)
     access_token = token_response['access_token']
     refresh_token = token_response['refresh_token']
     athlete_id = token_response['athlete']['id']
