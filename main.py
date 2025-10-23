@@ -2,7 +2,7 @@ import pandas as pd
 import requests
 import os
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Your Strava app credentials
 # CLIENT_ID = os.getenv("CLIENT_ID")
