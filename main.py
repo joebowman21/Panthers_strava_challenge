@@ -121,6 +121,7 @@ def main(token_data,max_date):
     df_filtered["Team"] = team_name
     df_filtered["Initials"] = initials
     df_filtered = df_filtered[['Initials','Athlete','Team', 'activity', 'distance','points','total_points','day', 'start_date_dt','start_date']]
+    print(df_filtered)
     return df_filtered
 
     # print(f"\n📋 Activities for {athlete_name} ({len(activities)} found):")
@@ -140,9 +141,10 @@ if __name__ == '__main__':
     else:
         df = pd.DataFrame()
         max_date = datetime(2000, 1, 1) 
+
     for athlete in token_data:
         result = main(athlete,max_date)
-        result
+        print(result)
         whole_team_results.append(result)
 
     all_athletes = pd.concat(whole_team_results, ignore_index=True)
