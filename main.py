@@ -9,6 +9,8 @@ CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("SECRET_ID")
 
 def refresh_access_token(refresh_token):
+    print(CLIENT_ID)
+    print(CLIENT_SECRET)
     response = requests.post(
         "https://www.strava.com/oauth/token",
         data={
