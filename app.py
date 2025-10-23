@@ -10,14 +10,22 @@ from email.message import EmailMessage
 
 app = Flask(__name__)
 
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("SECRET_ID")
+REDIRECT_URL = os.getenv("REDIRECT_URL")
+
+
+if not CLIENT_ID or not CLIENT_SECRET:
+    raise ValueError("❌ Missing STRAVA_CLIENT_ID or STRAVA_CLIENT_SECRET environment variables!")
+
 @app.route('/')
 def index():
     logging.info("Redirecting to Strava authorization URL")
     return redirect(
         "https://www.strava.com/oauth/authorize"
-        "?client_id=165742"
+        f"?client_id={CLIENT_ID}"
         "&response_type=code"
-        "&redirect_uri=https://panthers-strava-challenge.onrender.com/callback"
+        f"&redirect_uri=REDIRECT_URL"
         "&scope=read,activity:read_all"
         "&approval_prompt=auto"
     )
@@ -35,11 +43,11 @@ def callback():
     token_response = requests.post(
         'https://www.strava.com/oauth/token',
         data={
-            'client_id': '165742',
-            'client_secret': '92d0c671ef9b1fd0652eb5ef8de8c12393f2d152',
+            'client_id': CLIENT_ID,
+            'client_secret': CLIENT_SECRET,
             'code': code,
             'grant_type': 'authorization_code',
-            'redirect_uri': 'https://panthers-strava-challenge.onrender.com/callback' 
+            'redirect_uri': REDIRECT_URL 
         }
     ).json()
     print(token_response)
