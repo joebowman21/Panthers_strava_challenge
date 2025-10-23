@@ -144,7 +144,7 @@ if __name__ == '__main__':
       
     else:
         df = pd.DataFrame()
-        max_date = datetime(2000, 1, 1) 
+        max_date =  datetime(2000, 1, 1, tzinfo=timezone.utc)
 
     for athlete in token_data:
         result = main(athlete,max_date)
