@@ -131,8 +131,13 @@ if __name__ == '__main__':
         token_data = json.load(f)
 
     whole_team_results = []
-    df = pd.read_excel('activities.xlsx')
-    max_date = df['start_date'].max()
+
+    if os.path.exists('activities.xlsx'):
+        df = pd.read_excel('activities.xlsx')
+        max_date = df['start_date'].max()
+    else:
+        df = pd.DataFrame()
+        max_date = datetime(2000, 1, 1) 
     for athlete in token_data:
         result = main(athlete,max_date)
         result
