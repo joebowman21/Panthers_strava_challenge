@@ -9,7 +9,7 @@ from email.message import EmailMessage
 app = Flask(__name__)
 
 CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("SECRET_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 REDIRECT_URL = os.getenv("REDIRECT_URL")
 
 
