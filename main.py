@@ -118,7 +118,7 @@ def main(token_data,max_date):
     df_filtered.loc[df_filtered['type'].str.contains('Swim', case=False, na=False), 'activity'] = 'S'
     df_filtered.loc[df_filtered['type'].str.contains('Midweek sport', case=False, na=False), 'activity'] = 'MS'
     
-    df_filtered['start_date'] = pd.to_datetime(df_filtered['start_date'])
+    df_filtered['start_date'] = pd.to_datetime(df_filtered['start_date']).dt.tz_localize(None)
     df_filtered["Athlete"] = athlete_name
     df_filtered["Team"] = team_name
     df_filtered["Initials"] = initials
@@ -168,7 +168,7 @@ if __name__ == '__main__':
 
     # --- Drop duplicates (if needed) ---
     # For example, if an athlete already has an entry for the same date & activity
-    combined_df = combined_df.drop_duplicates(subset=["Athlete", "start_date", "activity"], keep="last")
+    combined_df = combined_df.drop_duplicates(subset=["Athlete", "start_date_dt", "activity"], keep="last")
 
     # --- Save back to file ---
     combined_df.to_excel(excel_filename, index=False)
