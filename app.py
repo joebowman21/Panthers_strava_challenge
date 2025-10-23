@@ -6,8 +6,6 @@ import logging
 import smtplib
 from email.message import EmailMessage
 
-# Replace these with your Strava app values
-
 app = Flask(__name__)
 
 CLIENT_ID = os.getenv("CLIENT_ID")
@@ -16,7 +14,7 @@ REDIRECT_URL = os.getenv("REDIRECT_URL")
 
 
 if not CLIENT_ID or not CLIENT_SECRET:
-    raise ValueError("❌ Missing STRAVA_CLIENT_ID or STRAVA_CLIENT_SECRET environment variables!")
+    raise ValueError("❌ Missing STRAVA CLIENT_ID or STRAVA CLIENT_SECRET environment variables!")
 
 @app.route('/')
 def index():
@@ -25,7 +23,7 @@ def index():
         "https://www.strava.com/oauth/authorize"
         f"?client_id={CLIENT_ID}"
         "&response_type=code"
-        f"&redirect_uri=REDIRECT_URL"
+        f"&redirect_uri={REDIRECT_URL}"
         "&scope=read,activity:read_all"
         "&approval_prompt=auto"
     )
