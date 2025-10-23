@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # CLIENT_ID = os.getenv("CLIENT_ID")
 # CLIENT_SECRET = os.getenv("SECRET_ID")
 CLIENT_ID = '165742'
-CLIENT_SECRET = '5ba3d1adb4e9face503194baee4cb9f0f16404e5'
+CLIENT_SECRET = '92d0c671ef9b1fd0652eb5ef8de8c12393f2d152'
 
 def refresh_access_token(refresh_token):
     print(CLIENT_ID)
