@@ -72,7 +72,7 @@ def main(token_data,max_date):
     df['start_date'] = pd.to_datetime(df['start_date'])
 
     # Get the most recent date (date only, no time)
-    most_recent_date = '2025-07-01'
+    most_recent_date = max_date - timedelta(days=1)
     # Filter activities to only those on the most recent date
     df_filtered = df[df['start_date'] > most_recent_date].copy()
 
@@ -115,15 +115,6 @@ def main(token_data,max_date):
     df_filtered.loc[df_filtered['type'].str.contains('Midweek sport', case=False, na=False), 'activity'] = 'MS'
     
     df_filtered['start_date'] = pd.to_datetime(df_filtered['start_date'])
-    df_filtered['start_date'] = df_filtered['start_date'].dt.tz_localize(None)
-
-# Get today's date
-    today_date = datetime.today().date()
-    yesterday_date = today_date - timedelta(days=1)
-    first_of_month = '2025-07-28'
-
-# Filter only rows where the date part matches today
-    df_filtered = df_filtered[df_filtered['start_date'] >= first_of_month ]
     df_filtered["Athlete"] = athlete_name
     df_filtered["Team"] = team_name
     df_filtered["Initials"] = initials
@@ -153,4 +144,18 @@ if __name__ == '__main__':
     excel_filename = f"activities.xlsx"
     # print(whole_team_results)
     # print(df)
-    all_athletes.to_excel(excel_filename, index=False)
+    # --- Read existing data if it exists ---
+    if os.path.exists(excel_filename):
+        existing_df = pd.read_excel(excel_filename)
+    else:
+        existing_df = pd.DataFrame()
+
+    # --- Combine new + old ---
+    combined_df = pd.concat([existing_df, all_athletes], ignore_index=True)
+
+    # --- Drop duplicates (if needed) ---
+    # For example, if an athlete already has an entry for the same date & activity
+    combined_df = combined_df.drop_duplicates(subset=["Athlete", "start_date", "activity"], keep="last")
+
+    # --- Save back to file ---
+    combined_df.to_excel(excel_filename, index=False)
