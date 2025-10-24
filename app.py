@@ -5,17 +5,43 @@ import os
 import logging
 import smtplib
 from email.message import EmailMessage
-
+from supabase import create_client, Client
+from cryptography.fernet import Fernet
+import os, time
 
 app = Flask(__name__)
 
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 REDIRECT_URL = os.getenv("REDIRECT_URL")
-
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 if not CLIENT_ID or not CLIENT_SECRET:
     raise ValueError("❌ Missing STRAVA CLIENT_ID or STRAVA CLIENT_SECRET environment variables!")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+def store_token(athlete_id, athlete_name, team, initials, refresh_token):
+    """Save or update a user's refresh token in Supabase."""
+    supabase.table("strava_tokens").upsert({
+        "athlete_id": athlete_id,
+        "athlete_name": athlete_name,
+        "team": team,
+        "initials": initials,
+        "refresh_token": refresh_token,
+        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")
+    }, on_conflict="athlete_id").execute()
+
+# In your /callback after you receive token_response:
+athlete = token_response["athlete"]
+store_token(
+    athlete_id=athlete["id"],
+    athlete_name=f'{athlete.get("firstname","")} {athlete.get("lastname","")}'.strip(),
+    team="Panthers",            # if you have it
+    initials="JB",              # if you have it
+    refresh_token=token_response["refresh_token"]
+)
 
 @app.route('/')
 def index():
