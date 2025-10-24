@@ -3,3 +3,5 @@ pandas
 openpyxl
 flask
 gunicorn
+supabase==2.6.0  
+cryptography
