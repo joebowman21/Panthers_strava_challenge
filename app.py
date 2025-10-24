@@ -84,12 +84,3 @@ def callback():
 )
 
     return f"✅ User {athlete_id} connected successfully!"
-    
-@app.route('/send-tokens')
-def send_tokens():
-    try:
-        Requests.post(
-        return send_file('tokens.csv', mimetype='text/csv', as_attachment=True, download_name='tokens.csv')
-    except Exception as e:
-        logging.error(f"Error sending tokens.csv file: {e}")
-        return "Failed to download file", 500
