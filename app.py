@@ -33,16 +33,6 @@ def store_token(athlete_id, athlete_name, team, initials, refresh_token):
         "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")
     }, on_conflict="athlete_id").execute()
 
-# In your /callback after you receive token_response:
-athlete = token_response["athlete"]
-store_token(
-    athlete_id=athlete["id"],
-    athlete_name=f'{athlete.get("firstname","")} {athlete.get("lastname","")}'.strip(),
-    team="Panthers",            # if you have it
-    initials="JB",              # if you have it
-    refresh_token=token_response["refresh_token"]
-)
-
 @app.route('/')
 def index():
     logging.info("Redirecting to Strava authorization URL")
@@ -84,8 +74,14 @@ def callback():
     logging.info(athlete_id)
     
     # Save refresh token (e.g., to a file or DB)
-    with open('tokens.csv', 'a') as f:
-        f.write(f"{athlete_id},{refresh_token}\n")
+    athlete = token_response['athlete']
+    store_token(
+    athlete_id=athlete['id'],
+    athlete_name=f"{athlete.get('firstname', '')} {athlete.get('lastname', '')}".strip(),
+    team="Panthers",     # optional — could make dynamic later
+    initials="JB",       # optional — could make dynamic later
+    refresh_token=refresh_token
+)
 
     return f"✅ User {athlete_id} connected successfully!"
     
