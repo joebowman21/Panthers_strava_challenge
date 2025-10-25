@@ -6,10 +6,10 @@ from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 
 # Your Strava app credentials
-# CLIENT_ID = os.getenv("CLIENT_ID")
-# CLIENT_SECRET = os.getenv("SECRET_ID")
-CLIENT_ID = '165742'
-CLIENT_SECRET = '92d0c671ef9b1fd0652eb5ef8de8c12393f2d152'
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("SECRET_ID")
+# CLIENT_ID = '165742'
+# CLIENT_SECRET = '92d0c671ef9b1fd0652eb5ef8de8c12393f2d152'
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
