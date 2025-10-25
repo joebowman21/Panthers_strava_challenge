@@ -32,7 +32,9 @@ jobs:
     - name: Run Strava data script
       env:
         CLIENT_ID: ${{ secrets.CLIENT_ID }}
-        CLIENT_SECRET: ${{ secrets.SECRET_ID }}
+        CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       run: python main.py
 
     - name: Commit and push results
