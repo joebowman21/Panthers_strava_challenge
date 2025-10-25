@@ -75,7 +75,7 @@ def main(token_data,max_date):
 
     athlete_name = token_data["athlete_name"]
     refresh_token = token_data["refresh_token"]
-    team_name = token_data["Team"]
+    team_name = token_data["team"]
     initials = token_data["initials"]
 
     print(f"\n🔄 Refreshing token for {athlete_name} ...")
