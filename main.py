@@ -28,8 +28,6 @@ def get_all_tokens():
 
 
 def refresh_access_token(refresh_token):
-    print(CLIENT_ID)
-    print(CLIENT_SECRET)
     response = requests.post(
         "https://www.strava.com/oauth/token",
         data={
@@ -151,8 +149,6 @@ def main(token_data,max_date):
 
 if __name__ == '__main__':
     token_data = get_all_tokens ()
-    logging.info(token_data)
-
     whole_team_results = []
 
     if os.path.exists('activities.xlsx'):
