@@ -3,12 +3,29 @@ import requests
 import os
 import json
 from datetime import datetime, timedelta, timezone
+from supabase import create_client, Client
 
 # Your Strava app credentials
 # CLIENT_ID = os.getenv("CLIENT_ID")
 # CLIENT_SECRET = os.getenv("SECRET_ID")
 CLIENT_ID = '165742'
 CLIENT_SECRET = '92d0c671ef9b1fd0652eb5ef8de8c12393f2d152'
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+def get_all_tokens():
+    """Fetch all athlete tokens stored in Supabase."""
+    try:
+        response = supabase.table("strava_tokens").select("*").execute()
+        data = response.data
+        if not data:
+            print("⚠️ No tokens found in Supabase.")
+        return data
+    except Exception as e:
+        print(f"❌ Error fetching tokens: {e}")
+        return []
+
 
 def refresh_access_token(refresh_token):
     print(CLIENT_ID)
@@ -131,21 +148,22 @@ def main(token_data,max_date):
     # for a in activities:
     #     data.append(f"- {a['type']} | {a['distance']} meters | {a['start_date']}")
     # print(data)
+
 if __name__ == '__main__':
-    with open('tokens.json', 'r') as f:
-        token_data = json.load(f)
+    token_data = get_all_tokens
+    logging.info(token_data)
 
     whole_team_results = []
 
     if os.path.exists('activities.xlsx'):
         df = pd.read_excel('activities.xlsx')
-        df['start_date'] = pd.to_datetime(df['start_date'])
+        df['start_date'] = pd.to_datetime(df['start_date'], utc = True)
         max_date = df['start_date'].max()
       
     else:
         df = pd.DataFrame()
         max_date =  datetime(2000, 1, 1, tzinfo=timezone.utc)
-
+        
     for athlete in token_data:
         result = main(athlete,max_date)
         print(result)
