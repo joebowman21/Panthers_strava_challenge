@@ -150,7 +150,7 @@ def main(token_data,max_date):
     # print(data)
 
 if __name__ == '__main__':
-    token_data = get_all_tokens
+    token_data = get_all_tokens ()
     logging.info(token_data)
 
     whole_team_results = []
