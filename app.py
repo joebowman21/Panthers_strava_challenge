@@ -8,6 +8,7 @@ from email.message import EmailMessage
 from supabase import create_client, Client
 from cryptography.fernet import Fernet
 import os, time
+import supabase
 
 app = Flask(__name__)
 
