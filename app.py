@@ -1,14 +1,6 @@
-from flask import Flask, request, redirect, send_file
-import requests
-import pandas as pd
-import os
-import logging
-import smtplib
-from email.message import EmailMessage
+from flask import Flask, request, redirect, jsonify
+import requests, os, logging, time
 from supabase import create_client, Client
-from cryptography.fernet import Fernet
-import os, time
-import supabase
 
 class StravaAPI:
     def __init__(self):
