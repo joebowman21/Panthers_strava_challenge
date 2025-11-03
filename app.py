@@ -84,6 +84,8 @@ class StravaAPI:
         
         return f"✅ User {athlete_id} connected successfully!"
 
+api = StravaAPI()
+app = api.app
+
 if __name__ == "__main__":
-    api = StravaAPI()
-    api.app.run(debug=True)
+    app.run(debug=True)
