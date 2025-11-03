@@ -37,9 +37,9 @@ class StravaAPI:
         logging.info("Redirecting to Strava authorization URL")
         url = (
             "https://www.strava.com/oauth/authorize"
-            f"?client_id={client_id}"
+            f"?client_id={self.client_id}"
             "&response_type=code"
-            f"&redirect_uri={redirect_url}"
+            f"&redirect_uri={self.redirect_url}"
             "&scope=read,activity:read_all"
             "&approval_prompt=auto"
         )
@@ -59,11 +59,11 @@ class StravaAPI:
             token_response = requests.post(
                 'https://www.strava.com/oauth/token',
                 data={
-                    'client_id': client_id,
-                    'client_secret': client_secret,
+                    'client_id': self.client_id,
+                    'client_secret': self.client_secret,
                     'code': code,
                     'grant_type': 'authorization_code',
-                    'redirect_uri': redirect_url 
+                    'redirect_uri': self.redirect_url 
                 }
             ).json()
             token_response.raise_for_status()
