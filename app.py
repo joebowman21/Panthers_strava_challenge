@@ -64,8 +64,9 @@ class StravaAPI:
                     'code': code,
                     'grant_type': 'authorization_code',
                     'redirect_uri': self.redirect_url 
-                }
-            ).json()
+                },
+                timeout = 20
+            )
             token_response.raise_for_status()
             data = token_response.json()
         except Exception as e:
@@ -79,7 +80,7 @@ class StravaAPI:
             athlete_name=f"{athlete.get('firstname', '')} {athlete.get('lastname', '')}".strip(),
             team="Panthers",     # optional — could make dynamic later
             initials="JB",       # optional — could make dynamic later
-            refresh_token=refresh_token
+            _token=_token
         )
         
         return f"✅ User {athlete_id} connected successfully!"
