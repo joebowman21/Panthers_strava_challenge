@@ -25,6 +25,22 @@ def get_all_tokens():
         print(f"❌ Error fetching tokens: {e}")
         return []
 
+def get_max_activity_date():
+    """Fetch the latest activity start_date directly from Supabase."""
+    try:
+        # Pull the maximum start_date from your activities table
+        response = supabase.table("activities").select("start_date").order("start_date", descending=True).limit(1).execute()
+        data = response.data
+        if data and data[0].get("start_date"):
+            # Parse the timestamp string from Supabase securely into a UTC datetime object
+            max_date = pd.to_datetime(data[0]["start_date"]).to_pydatetime()
+            return max_date.replace(tzinfo=timezone.utc)
+    except Exception as e:
+        print(f"ℹ️ Could not fetch max date (table might be empty): {e}")
+    
+    # Default fallback date if the database table is clean and empty
+    return datetime(2000, 1, 1, tzinfo=timezone.utc)
+
 def refresh_access_token(refresh_token):
     response = requests.post(
         "https://www.strava.com/oauth/token",
@@ -134,8 +150,8 @@ def main(token_data, max_date):
     activity_code_map = {'Cycle': 'C', 'Gym': 'G', 'Run': 'R', 'Swim': 'S', 'Midweek sport': 'MS'}
     df_filtered['activity'] = df_filtered['type'].map(activity_code_map).fillna('O')
 
-    # Drop timezone context safely for Excel compliance
-    df_filtered['start_date'] = df_filtered['start_date'].dt.tz_localize(None)
+    # Keep timezone information as strings so Supabase parses it cleanly as timestamptz
+    df_filtered['start_date'] = df_filtered['start_date'].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
     
     # Metadata injection
     df_filtered["Athlete"] = athlete_name
@@ -149,20 +165,9 @@ if __name__ == '__main__':
     token_data = get_all_tokens()
     whole_team_results = []
 
-    excel_filename = "activities.xlsx"
-
-    if os.path.exists(excel_filename):
-        existing_df = pd.read_excel(excel_filename)
-        # Force conversion to datetime to find max entry safely
-        existing_df['start_date'] = pd.to_datetime(existing_df['start_date'])
-        max_date = existing_df['start_date'].max()
-        if pd.isnull(max_date):
-            max_date = datetime(2000, 1, 1)
-        # Keep internal script dates timezone-aware (UTC)
-        max_date = max_date.replace(tzinfo=timezone.utc)
-    else:
-        existing_df = pd.DataFrame()
-        max_date = datetime(2000, 1, 1, tzinfo=timezone.utc)
+    # Get baseline max tracking date straight from Supabase instead of local files
+    max_date = get_max_activity_date()
+    print(f"📅 Checking for new activities uploaded since: {max_date}")
         
     for athlete in token_data:
         result = main(athlete, max_date)
@@ -173,14 +178,21 @@ if __name__ == '__main__':
         all_athletes = pd.concat(whole_team_results, ignore_index=True)
         all_athletes = all_athletes.sort_values(by=['start_date_dt', 'Athlete'])
         
-        # Combine fresh batch with cached file
-        combined_df = pd.concat([existing_df, all_athletes], ignore_index=True)
+        # Convert DataFrame columns to lowercase to map directly to your PostgreSQL database columns
+        all_athletes.columns = all_athletes.columns.str.lower()
+        all_athletes['start_date_dt'] = all_athletes['start_date_dt'].astype(str)
         
-        # Strip out explicit duplicate instances on match bounds
-        combined_df = combined_df.drop_duplicates(subset=["Athlete", "start_date_dt", "activity"], keep="last")
+        # Structure the payload data records
+        records = all_athletes.to_dict(orient='records')
         
-        # Write updates down
-        combined_df.to_excel(excel_filename, index=False)
-        print(f"🎉 Code execution successful. File '{excel_filename}' updated with new activities.")
+        try:
+            # Execute database bulk write
+            supabase.table("activities").upsert(
+                records, 
+                on_conflict="athlete,start_date_dt,activity"
+            ).execute()
+            print(f"🎉 Database sync complete. Successfully upserted {len(records)} entries into Supabase!")
+        except Exception as e:
+            print(f"❌ Failed pushing entries directly to Supabase: {e}")
     else:
-        print("ℹ️ No new workouts found for any athlete. Spreadsheet remains untouched.")
+        print("ℹ️ No new workouts found for any athlete. Database tables remain current.")
