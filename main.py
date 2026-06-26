@@ -176,7 +176,7 @@ if __name__ == '__main__':
 
     if whole_team_results:
         all_athletes = pd.concat(whole_team_results, ignore_index=True)
-        all_athletes = all_athletes.sort_values(by=['start_date_dt', 'athlete'])
+        all_athletes = all_athletes.sort_values(by=['start_date_dt', 'Athlete'])
         
         # Convert DataFrame columns to lowercase to map directly to your PostgreSQL database columns
         all_athletes.columns = all_athletes.columns.str.lower()
@@ -184,7 +184,7 @@ if __name__ == '__main__':
 
         # 🔄 FIX: Combine multiple activities of the same type on the same day by the same athlete
         # This prevents the 'ON CONFLICT' duplication crash.
-        all_athletes = all_athletes.groupby(['athlete', 'start_date_dt', 'activity', 'initials', 'team', 'day'], as_index=False).agg({
+        all_athletes = all_athletes.groupby(['Athlete', 'start_date_dt', 'activity', 'initials', 'team', 'day'], as_index=False).agg({
             'distance': 'sum',
             'points': 'first',         # Keep the base point value per activity type
             'total_points': 'sum',     # Sum up the total points for the day
