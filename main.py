@@ -25,20 +25,25 @@ def get_all_tokens():
         print(f"❌ Error fetching tokens: {e}")
         return []
 
-def get_max_activity_date():
-    """Fetch the latest activity start_date directly from Supabase."""
+def get_max_activity_date(athlete_name):
+    """Fetch the latest activity start_date from Supabase for a specific athlete."""
     try:
-        # Pull the maximum start_date from your activities table
-        response = supabase.table("activities").select("start_date").order("start_date", desc=True).limit(1).execute()
+        response = supabase.table("activities") \
+            .select("start_date") \
+            .eq("athlete", athlete_name) \
+            .order("start_date", desc=True) \
+            .limit(1) \
+            .execute()
+        
         data = response.data
         if data and data[0].get("start_date"):
-            # Parse the timestamp string from Supabase securely into a UTC datetime object
+            # Use pandas to parse the full datetime string including timezone cleanly
             max_date = pd.to_datetime(data[0]["start_date"]).to_pydatetime()
             return max_date.replace(tzinfo=timezone.utc)
     except Exception as e:
-        print(f"ℹ️ Could not fetch max date (table might be empty): {e}")
+        print(f"ℹ️ Could not fetch max date for {athlete_name}: {e}")
     
-    # Default fallback date if the database table is clean and empty
+    # Default fallback date if the athlete has zero entries in the database
     return datetime(2000, 1, 1, tzinfo=timezone.utc)
 
 def refresh_access_token(refresh_token):
@@ -164,38 +169,37 @@ def main(token_data, max_date):
 if __name__ == '__main__':
     token_data = get_all_tokens()
     whole_team_results = []
-
-    # Get baseline max tracking date straight from Supabase instead of local files
-    max_date = get_max_activity_date()
-    print(f"📅 Checking for new activities uploaded since: {max_date}")
         
     for athlete in token_data:
+        athlete_name = athlete["athlete_name"]
+        
+        # 🔄 DYNAMIC CHECK: Get the baseline tracking date SPECIFIC to this athlete
+        max_date = get_max_activity_date(athlete_name)
+        print(f"📅 Checking for new activities for {athlete_name} uploaded since: {max_date}")
+        
         result = main(athlete, max_date)
         if result is not None and not result.empty:
             whole_team_results.append(result)
 
     if whole_team_results:
         all_athletes = pd.concat(whole_team_results, ignore_index=True)
-        all_athletes = all_athletes.sort_values(by=['start_date_dt', 'Athlete'])
+        all_athletes = all_athletes.sort_values(by=['start_date_dt', 'athlete'])
         
-        # Convert DataFrame columns to lowercase to map directly to your PostgreSQL database columns
+        # Convert DataFrame columns to lowercase to map directly to your database columns
         all_athletes.columns = all_athletes.columns.str.lower()
         all_athletes['start_date_dt'] = all_athletes['start_date_dt'].astype(str)
 
-        # 🔄 FIX: Combine multiple activities of the same type on the same day by the same athlete
-        # This prevents the 'ON CONFLICT' duplication crash.
+        # Combine multiple activities of the same type on the same day by the same athlete
         all_athletes = all_athletes.groupby(['athlete', 'start_date_dt', 'activity', 'initials', 'team', 'day'], as_index=False).agg({
             'distance': 'sum',
-            'points': 'first',         # Keep the base point value per activity type
-            'total_points': 'sum',     # Sum up the total points for the day
-            'start_date': 'first'      # Keep the earliest timestamp string
+            'points': 'first',         
+            'total_points': 'sum',     
+            'start_date': 'first'      
         })
         
-        # Structure the payload data records
         records = all_athletes.to_dict(orient='records')
         
         try:
-            # Execute database bulk write
             supabase.table("activities").upsert(
                 records, 
                 on_conflict="athlete,start_date_dt,activity"
