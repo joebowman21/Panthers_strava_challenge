@@ -11,14 +11,23 @@ class StravaAPI:
         self.client_id = os.getenv("CLIENT_ID")
         self.client_secret = os.getenv("CLIENT_SECRET")
         self.redirect_url = os.getenv("REDIRECT_URL")
-        self.supabase_url = os.getenv("SUPABASE_URL")
-        self.supabase_service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        
+        # Pull raw environment strings
+        raw_url = os.getenv("SUPABASE_URL")
+        raw_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
         # Basic environment checks
         if not self.client_id or not self.client_secret:
             raise ValueError("❌ Missing STRAVA client_id or STRAVA client_secret environment variables!")
-        if not self.supabase_url or not self.supabase_service_role_key:
+        if not raw_url or not raw_key:
             raise ValueError("❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables!")
+        
+        # 🧼 SANITIZATION CRITICAL FIX: Strip spaces, quotes, and trailing slashes
+        self.supabase_url = raw_url.strip().strip('"').strip("'").rstrip('/')
+        self.supabase_service_role_key = raw_key.strip().strip('"').strip("'")
+
+        # Log out exactly what is being used to make diagnosis easy in the Render console
+        logging.info(f"🚀 Initializing Supabase client with URL: {self.supabase_url}")
         
         self.supabase = create_client(self.supabase_url, self.supabase_service_role_key)
         self.register_routes()
