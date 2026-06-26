@@ -29,7 +29,7 @@ def get_max_activity_date():
     """Fetch the latest activity start_date directly from Supabase."""
     try:
         # Pull the maximum start_date from your activities table
-        response = supabase.table("activities").select("start_date").order("start_date", descending=True).limit(1).execute()
+        response = supabase.table("activities").select("start_date").order("start_date", desc=True).limit(1).execute()
         data = response.data
         if data and data[0].get("start_date"):
             # Parse the timestamp string from Supabase securely into a UTC datetime object
@@ -176,11 +176,20 @@ if __name__ == '__main__':
 
     if whole_team_results:
         all_athletes = pd.concat(whole_team_results, ignore_index=True)
-        all_athletes = all_athletes.sort_values(by=['start_date_dt', 'Athlete'])
+        all_athletes = all_athletes.sort_values(by=['start_date_dt', 'athlete'])
         
         # Convert DataFrame columns to lowercase to map directly to your PostgreSQL database columns
         all_athletes.columns = all_athletes.columns.str.lower()
         all_athletes['start_date_dt'] = all_athletes['start_date_dt'].astype(str)
+
+        # 🔄 FIX: Combine multiple activities of the same type on the same day by the same athlete
+        # This prevents the 'ON CONFLICT' duplication crash.
+        all_athletes = all_athletes.groupby(['athlete', 'start_date_dt', 'activity', 'initials', 'team', 'day'], as_index=False).agg({
+            'distance': 'sum',
+            'points': 'first',         # Keep the base point value per activity type
+            'total_points': 'sum',     # Sum up the total points for the day
+            'start_date': 'first'      # Keep the earliest timestamp string
+        })
         
         # Structure the payload data records
         records = all_athletes.to_dict(orient='records')
