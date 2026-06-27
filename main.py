@@ -37,7 +37,6 @@ def get_max_activity_date(athlete_name):
         
         data = response.data
         if data and data[0].get("start_date"):
-            # Use pandas to parse the full datetime string including timezone cleanly
             max_date = pd.to_datetime(data[0]["start_date"]).to_pydatetime()
             return max_date.replace(tzinfo=timezone.utc)
     except Exception as e:
@@ -110,61 +109,104 @@ def main(token_data, max_date):
     df['start_date'] = pd.to_datetime(df['start_date'], utc=True)
     most_recent_date = max_date - timedelta(days=1)
     
-    # Filter out historical activities
+    # Filter out historical activities already processed
     df_filtered = df[df['start_date'] > most_recent_date].copy()
     if df_filtered.empty:
         print(f"ℹ️ No new activities for {athlete_name} since {most_recent_date.date()}.")
         return None
 
-    # Safe mapping initialization
-    df_filtered = df_filtered[['sport_type', 'distance', 'start_date']]
+    # Keep essential tracking elements
+    df_filtered = df_filtered[['sport_type', 'distance', 'moving_time', 'start_date', 'name']]
     df_filtered['start_date_dt'] = df_filtered['start_date'].dt.date
-    df_filtered['type'] = 'Unknown' # Initialize column to prevent KeyError
+    df_filtered['type'] = 'Unknown'
+    
+    # Convert standard metrics upfront (Meters to KM, Seconds to Minutes)
+    df_filtered['distance_km'] = (df_filtered['distance'] / 1000).round(2)
+    df_filtered['minutes'] = (df_filtered['moving_time'] / 60).round(2)
 
-    # Categorize Sport Types
+    # Calculate pace (minutes per km) to protect rule thresholds
+    df_filtered['pace_min_km'] = df_filtered.apply(
+        lambda r: r['minutes'] / r['distance_km'] if r['distance_km'] > 0 else 0, axis=1
+    )
+
+    # Categorize Sport Types based on Strava data strings
     sport_mappings = {
-        'ride': 'Cycle', 'training': 'Gym', 'workout': 'Gym', 'run': 'Run', 'swim': 'Swim',
+        'ride': 'Cycle', 'run': 'Run', 'swim': 'Swim',
         'tennis': 'Midweek sport', 'soccer': 'Midweek sport', 'squash': 'Midweek sport',
-        'badminton': 'Midweek sport', 'rockclimbing': 'Midweek sport', 'golf': 'Midweek sport',
-        'walk': 'Walk', 'hike': 'Walk'
+        'badminton': 'Midweek sport', 'rockclimbing': 'Midweek sport', 'golf': 'Midweek sport'
     }
 
     for keyword, mapped_type in sport_mappings.items():
         df_filtered.loc[df_filtered['sport_type'].str.contains(keyword, case=False, na=False), 'type'] = mapped_type
 
-    # Filter out Walks
-    df_filtered = df_filtered[df_filtered['type'] != 'Walk']
-    if df_filtered.empty:
+    # Gym fallback condition: explicitly label workouts or weight training
+    df_filtered.loc[df_filtered['sport_type'].str.contains('workout|training|weightlifting', case=False, na=False), 'type'] = 'Gym'
+
+    # 🛑 APPLY PANTHERS FITNESS CRITERIA CONDITIONS
+    valid_rows = []
+    for idx, row in df_filtered.iterrows():
+        points_per_km = 0
+        flat_points = 0
+        activity_code = 'O'
+        is_valid = False
+
+        # 🏃‍♂️ RUNNING RULES
+        if row['type'] == 'Run':
+            # Min 2K distance AND pace must be 7:00/km or faster
+            if row['distance_km'] >= 2.0 and row['pace_min_km'] <= 7.0:
+                points_per_km = 4
+                activity_code = 'R'
+                is_valid = True
+
+        # 🚴‍♂️ CYCLING RULES
+        elif row['type'] == 'Cycle':
+            # Filter out Lime Bikes by reading custom workout name strings
+            is_lime = 'lime' in str(row['name']).lower()
+            if row['distance_km'] >= 2.0 and not is_lime:
+                points_per_km = 1
+                activity_code = 'C'
+                is_valid = True
+
+        # 🏊‍♂️ SWIMMING RULES
+        elif row['type'] == 'Swim':
+            points_per_km = 16
+            activity_code = 'S'
+            is_valid = True
+
+        # 💪 GYM RULES
+        elif row['type'] == 'Gym':
+            if row['minutes'] >= 40.0:
+                flat_points = 12
+                activity_code = 'G'
+                is_valid = True
+
+        # 🏸 MIDWEEK SPORT RULES
+        elif row['type'] == 'Midweek sport':
+            flat_points = 20
+            activity_code = 'MS'
+            is_valid = True
+
+        if is_valid:
+            # Score Calculation Model
+            calculated_points = (row['distance_km'] * points_per_km) + flat_points
+            
+            valid_rows.append({
+                'initials': initials,
+                'athlete': athlete_name,
+                'team': team_name,
+                'activity': activity_code,
+                'distance': row['distance_km'],
+                'points': points_per_km if points_per_km > 0 else flat_points,
+                'total_points': round(calculated_points, 2),
+                'day': row['start_date'].day,
+                'start_date_dt': str(row['start_date_dt']),
+                'start_date': row['start_date'].strftime('%Y-%m-%dT%H:%M:%SZ')
+            })
+
+    if not valid_rows:
         return None
 
-    # Distance conversion (Meters to KM)
-    df_filtered['distance'] = (df_filtered['distance'] / 1000).round(2)
-
-    # Force flat rates for Gym and Midweek sports
-    df_filtered['distance'] = df_filtered.apply(
-        lambda row: 1.0 if row['type'] in ['Gym', 'Midweek sport'] else row['distance'], axis=1
-    )
-
-    # Points Assignment Logic
-    points_map = {'Cycle': 1, 'Run': 4, 'Gym': 12, 'Midweek sport': 20, 'Swim': 16}
-    df_filtered['points'] = df_filtered['type'].map(points_map).fillna(0)
-    df_filtered['total_points'] = df_filtered['points'] * df_filtered['distance']
-    df_filtered['day'] = df_filtered['start_date'].dt.day
-
-    # Shortcode Activity Code mappings
-    activity_code_map = {'Cycle': 'C', 'Gym': 'G', 'Run': 'R', 'Swim': 'S', 'Midweek sport': 'MS'}
-    df_filtered['activity'] = df_filtered['type'].map(activity_code_map).fillna('O')
-
-    # Keep timezone information as strings so Supabase parses it cleanly as timestamptz
-    df_filtered['start_date'] = df_filtered['start_date'].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-    
-    # Metadata injection
-    df_filtered["Athlete"] = athlete_name
-    df_filtered["Team"] = team_name
-    df_filtered["Initials"] = initials
-
-    df_filtered = df_filtered[['Initials', 'Athlete', 'Team', 'activity', 'distance', 'points', 'total_points', 'day', 'start_date_dt', 'start_date']]
-    return df_filtered
+    return pd.DataFrame(valid_rows)
 
 if __name__ == '__main__':
     token_data = get_all_tokens()
@@ -173,7 +215,7 @@ if __name__ == '__main__':
     for athlete in token_data:
         athlete_name = athlete["athlete_name"]
         
-        # 🔄 DYNAMIC CHECK: Get the baseline tracking date SPECIFIC to this athlete
+        # 🔄 DYNAMIC CHECK: Get the tracking date specific to this athlete
         max_date = get_max_activity_date(athlete_name)
         print(f"📅 Checking for new activities for {athlete_name} uploaded since: {max_date}")
         
@@ -185,7 +227,7 @@ if __name__ == '__main__':
         all_athletes = pd.concat(whole_team_results, ignore_index=True)
         all_athletes = all_athletes.sort_values(by=['start_date_dt', 'athlete'])
         
-        # Convert DataFrame columns to lowercase to map directly to your database columns
+        # Convert DataFrame columns to lowercase to map directly to database columns
         all_athletes.columns = all_athletes.columns.str.lower()
         all_athletes['start_date_dt'] = all_athletes['start_date_dt'].astype(str)
 
