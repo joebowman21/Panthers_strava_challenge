@@ -109,7 +109,7 @@ def main(token_data, max_date):
     df['start_date'] = pd.to_datetime(df['start_date'], utc=True)
     
     # 🔒 SAFEGUARD: Ensure data pulled is strictly from July 1st onward
-    july_start = datetime(2026, 7, 1, 0, 0, 0, tzinfo=timezone.utc)
+    july_start = datetime(2026, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
     if max_date < july_start:
         max_date = july_start
 
