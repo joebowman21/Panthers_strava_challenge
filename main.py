@@ -42,8 +42,8 @@ def get_max_activity_date(athlete_name):
     except Exception as e:
         print(f"ℹ️ Could not fetch max date for {athlete_name}: {e}")
     
-    # Default fallback date if the athlete has zero entries in the database
-    return datetime(2000, 1, 1, tzinfo=timezone.utc)
+    # 🎯 FIX: Changed fallback from year 2000 to July 1st, 2026 midnight UTC
+    return datetime(2026, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
 
 def refresh_access_token(refresh_token):
     response = requests.post(
@@ -107,10 +107,18 @@ def main(token_data, max_date):
     
     # Target date configuration (ensure UTC matching)
     df['start_date'] = pd.to_datetime(df['start_date'], utc=True)
+    
+    # 🔒 SAFEGUARD: Ensure data pulled is strictly from July 1st onward
+    july_start = datetime(2026, 7, 1, 0, 0, 0, tzinfo=timezone.utc)
+    if max_date < july_start:
+        max_date = july_start
+
     most_recent_date = max_date - timedelta(days=1)
     
-    # Filter out historical activities already processed
-    df_filtered = df[df['start_date'] > most_recent_date].copy()
+    # Filter out activities outside our window
+    df_filtered = df[df['start_date'] >= july_start].copy()
+    df_filtered = df_filtered[df_filtered['start_date'] > most_recent_date].copy()
+    
     if df_filtered.empty:
         print(f"ℹ️ No new activities for {athlete_name} since {most_recent_date.date()}.")
         return None
@@ -152,7 +160,6 @@ def main(token_data, max_date):
 
         # 🏃‍♂️ RUNNING RULES
         if row['type'] == 'Run':
-            # Min 2K distance AND pace must be 7:00/km or faster
             if row['distance_km'] >= 2.0 and row['pace_min_km'] <= 7.0:
                 points_per_km = 4
                 activity_code = 'R'
@@ -160,7 +167,6 @@ def main(token_data, max_date):
 
         # 🚴‍♂️ CYCLING RULES
         elif row['type'] == 'Cycle':
-            # Filter out Lime Bikes by reading custom workout name strings
             is_lime = 'lime' in str(row['name']).lower()
             if row['distance_km'] >= 2.0 and not is_lime:
                 points_per_km = 1
@@ -187,7 +193,6 @@ def main(token_data, max_date):
             is_valid = True
 
         if is_valid:
-            # Score Calculation Model
             calculated_points = (row['distance_km'] * points_per_km) + flat_points
             
             valid_rows.append({
@@ -215,7 +220,6 @@ if __name__ == '__main__':
     for athlete in token_data:
         athlete_name = athlete["athlete_name"]
         
-        # 🔄 DYNAMIC CHECK: Get the tracking date specific to this athlete
         max_date = get_max_activity_date(athlete_name)
         print(f"📅 Checking for new activities for {athlete_name} uploaded since: {max_date}")
         
@@ -227,11 +231,9 @@ if __name__ == '__main__':
         all_athletes = pd.concat(whole_team_results, ignore_index=True)
         all_athletes = all_athletes.sort_values(by=['start_date_dt', 'athlete'])
         
-        # Convert DataFrame columns to lowercase to map directly to database columns
         all_athletes.columns = all_athletes.columns.str.lower()
         all_athletes['start_date_dt'] = all_athletes['start_date_dt'].astype(str)
 
-        # Combine multiple activities of the same type on the same day by the same athlete
         all_athletes = all_athletes.groupby(['athlete', 'start_date_dt', 'activity', 'initials', 'team', 'day'], as_index=False).agg({
             'distance': 'sum',
             'points': 'first',         
