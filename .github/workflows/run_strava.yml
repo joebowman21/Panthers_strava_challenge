@@ -1,9 +1,9 @@
 name: Update Strava Activities
 
 on:
-  # schedule:
+  schedule:
   #    Run disabled until next challend
-  #   - cron: "0 6 * * *"
+    - cron: "52 15 * * *"
   workflow_dispatch:  # allows manual trigger from GitHub
 
 permissions:
