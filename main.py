@@ -42,6 +42,7 @@ def get_max_activity_date(athlete_name):
     except Exception as e:
         print(f"ℹ️ Could not fetch max date for {athlete_name}: {e}")
     
+    # Strictly defaults to Midnight on Day 1 of the challenge
     return datetime(2026, 7, 1, 0, 0, 0, tzinfo=timezone.utc)
 
 def refresh_access_token(refresh_token):
@@ -106,20 +107,24 @@ def main(token_data, max_date):
     
     df['start_date'] = pd.to_datetime(df['start_date'], utc=True)
     
+    # 🔒 Absolute floor setup: Ensures zero activities prior to July 1st can pass
     july_start = datetime(2026, 7, 1, 0, 0, 0, tzinfo=timezone.utc)
-    if max_date < july_start:
-        max_date = july_start
 
-    most_recent_date = max_date - timedelta(days=1)
+    if max_date <= july_start:
+        most_recent_date = july_start
+    else:
+        most_recent_date = max_date - timedelta(days=1)
+        if most_recent_date < july_start:
+            most_recent_date = july_start
     
+    # Filter the workouts dynamically against the guardrails
     df_filtered = df[df['start_date'] >= july_start].copy()
-    df_filtered = df_filtered[df_filtered['start_date'] > most_recent_date].copy()
+    df_filtered = df_filtered[df_filtered['start_date'] >= most_recent_date].copy()
     
     if df_filtered.empty:
         print(f"ℹ️ No new activities for {athlete_name} since {most_recent_date.date()}.")
         return None
 
-    # ✅ CHANGE: Retained 'id' from Strava API for row-level deduplication
     df_filtered = df_filtered[['id', 'sport_type', 'distance', 'moving_time', 'start_date', 'name']]
     df_filtered['start_date_dt'] = df_filtered['start_date'].dt.date
     df_filtered['type'] = 'Unknown'
@@ -131,10 +136,19 @@ def main(token_data, max_date):
         lambda r: r['minutes'] / r['distance_km'] if r['distance_km'] > 0 else 0, axis=1
     )
 
+    # ✅ FIXED: Expanded mappings to handle Garmin specific Run profiles seamlessly
     sport_mappings = {
-        'ride': 'Cycle', 'run': 'Run', 'swim': 'Swim',
-        'tennis': 'Midweek sport', 'soccer': 'Midweek sport', 'squash': 'Midweek sport',
-        'badminton': 'Midweek sport', 'rockclimbing': 'Midweek sport', 'golf': 'Midweek sport'
+        'ride': 'Cycle', 
+        'run': 'Run', 
+        'trailrun': 'Run',
+        'virtualrun': 'Run',
+        'swim': 'Swim',
+        'tennis': 'Midweek sport', 
+        'soccer': 'Midweek sport', 
+        'squash': 'Midweek sport',
+        'badminton': 'Midweek sport', 
+        'rockclimbing': 'Midweek sport', 
+        'golf': 'Midweek sport'
     }
 
     for keyword, mapped_type in sport_mappings.items():
@@ -182,7 +196,7 @@ def main(token_data, max_date):
             calculated_points = (row['distance_km'] * points_per_km) + flat_points
             
             valid_rows.append({
-                'strava_activity_id': str(row['id']), # ✅ Store the unique Strava activity string ID
+                'strava_activity_id': str(row['id']),
                 'initials': initials,
                 'athlete': athlete_name,
                 'team': team_name,
@@ -191,46 +205,4 @@ def main(token_data, max_date):
                 'points': points_per_km if points_per_km > 0 else flat_points,
                 'total_points': round(calculated_points, 2),
                 'day': row['start_date'].day,
-                'start_date_dt': str(row['start_date_dt']),
-                'start_date': row['start_date'].strftime('%Y-%m-%dT%H:%M:%SZ')
-            })
-
-    if not valid_rows:
-        return None
-
-    return pd.DataFrame(valid_rows)
-
-if __name__ == '__main__':
-    token_data = get_all_tokens()
-    whole_team_results = []
-        
-    for athlete in token_data:
-        athlete_name = athlete["athlete_name"]
-        
-        max_date = get_max_activity_date(athlete_name)
-        print(f"📅 Checking for new activities for {athlete_name} uploaded since: {max_date}")
-        
-        result = main(athlete, max_date)
-        if result is not None and not result.empty:
-            whole_team_results.append(result)
-
-    if whole_team_results:
-        all_athletes = pd.concat(whole_team_results, ignore_index=True)
-        all_athletes = all_athletes.sort_values(by=['start_date', 'athlete'])
-        
-        all_athletes.columns = all_athletes.columns.str.lower()
-        all_athletes['start_date_dt'] = all_athletes['start_date_dt'].astype(str)
-        
-        records = all_athletes.to_dict(orient='records')
-        
-        try:
-            # ✅ CHANGE: Dedupes on the individual Strava ID constraint instead of composite daily keys
-            supabase.table("activities").upsert(
-                records, 
-                on_conflict="strava_activity_id"
-            ).execute()
-            print(f"🎉 Database sync complete. Successfully upserted {len(records)} entries into Supabase!")
-        except Exception as e:
-            print(f"❌ Failed pushing entries directly to Supabase: {e}")
-    else:
-        print("ℹ️ No new workouts found for any athlete. Database tables remain current.")
+                'start_date_dt': str(row
