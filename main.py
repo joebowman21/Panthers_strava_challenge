@@ -42,7 +42,6 @@ def get_max_activity_date(athlete_name):
     except Exception as e:
         print(f"ℹ️ Could not fetch max date for {athlete_name}: {e}")
     
-    # 🎯 FIX: Changed fallback from year 2000 to July 1st, 2026 midnight UTC
     return datetime(2026, 7, 1, 0, 0, 0, tzinfo=timezone.utc)
 
 def refresh_access_token(refresh_token):
@@ -86,8 +85,8 @@ def get_activities(access_token, per_page=100):
 def main(token_data, max_date):
     athlete_name = token_data["athlete_name"]
     refresh_token = token_data["refresh_token"]
-    team_name = token_data["team"]
-    initials = token_data["initials"]
+    team_name = token_data.get("team", "Unassigned")
+    initials = token_data.get("initials", "XX")
 
     print(f"\n🔄 Refreshing token for {athlete_name} ...")
     new_tokens = refresh_access_token(refresh_token)
@@ -105,17 +104,14 @@ def main(token_data, max_date):
 
     df = pd.DataFrame(activities)
     
-    # Target date configuration (ensure UTC matching)
     df['start_date'] = pd.to_datetime(df['start_date'], utc=True)
     
-    # 🔒 SAFEGUARD: Ensure data pulled is strictly from July 1st onward
     july_start = datetime(2026, 7, 1, 0, 0, 0, tzinfo=timezone.utc)
     if max_date < july_start:
         max_date = july_start
 
     most_recent_date = max_date - timedelta(days=1)
     
-    # Filter out activities outside our window
     df_filtered = df[df['start_date'] >= july_start].copy()
     df_filtered = df_filtered[df_filtered['start_date'] > most_recent_date].copy()
     
@@ -123,21 +119,18 @@ def main(token_data, max_date):
         print(f"ℹ️ No new activities for {athlete_name} since {most_recent_date.date()}.")
         return None
 
-    # Keep essential tracking elements
-    df_filtered = df_filtered[['sport_type', 'distance', 'moving_time', 'start_date', 'name']]
+    # ✅ CHANGE: Retained 'id' from Strava API for row-level deduplication
+    df_filtered = df_filtered[['id', 'sport_type', 'distance', 'moving_time', 'start_date', 'name']]
     df_filtered['start_date_dt'] = df_filtered['start_date'].dt.date
     df_filtered['type'] = 'Unknown'
     
-    # Convert standard metrics upfront (Meters to KM, Seconds to Minutes)
     df_filtered['distance_km'] = (df_filtered['distance'] / 1000).round(2)
     df_filtered['minutes'] = (df_filtered['moving_time'] / 60).round(2)
 
-    # Calculate pace (minutes per km) to protect rule thresholds
     df_filtered['pace_min_km'] = df_filtered.apply(
         lambda r: r['minutes'] / r['distance_km'] if r['distance_km'] > 0 else 0, axis=1
     )
 
-    # Categorize Sport Types based on Strava data strings
     sport_mappings = {
         'ride': 'Cycle', 'run': 'Run', 'swim': 'Swim',
         'tennis': 'Midweek sport', 'soccer': 'Midweek sport', 'squash': 'Midweek sport',
@@ -147,10 +140,8 @@ def main(token_data, max_date):
     for keyword, mapped_type in sport_mappings.items():
         df_filtered.loc[df_filtered['sport_type'].str.contains(keyword, case=False, na=False), 'type'] = mapped_type
 
-    # Gym fallback condition: explicitly label workouts or weight training
     df_filtered.loc[df_filtered['sport_type'].str.contains('workout|training|weightlifting', case=False, na=False), 'type'] = 'Gym'
 
-    # 🛑 APPLY PANTHERS FITNESS CRITERIA CONDITIONS
     valid_rows = []
     for idx, row in df_filtered.iterrows():
         points_per_km = 0
@@ -158,14 +149,12 @@ def main(token_data, max_date):
         activity_code = 'O'
         is_valid = False
 
-        # 🏃‍♂️ RUNNING RULES
         if row['type'] == 'Run':
             if row['distance_km'] >= 2.0 and row['pace_min_km'] <= 7.0:
                 points_per_km = 4
                 activity_code = 'R'
                 is_valid = True
 
-        # 🚴‍♂️ CYCLING RULES
         elif row['type'] == 'Cycle':
             is_lime = 'lime' in str(row['name']).lower()
             if row['distance_km'] >= 2.0 and not is_lime:
@@ -173,20 +162,17 @@ def main(token_data, max_date):
                 activity_code = 'C'
                 is_valid = True
 
-        # 🏊‍♂️ SWIMMING RULES
         elif row['type'] == 'Swim':
             points_per_km = 20
             activity_code = 'S'
             is_valid = True
 
-        # 💪 GYM RULES
         elif row['type'] == 'Gym':
             if row['minutes'] >= 40.0:
                 flat_points = 12
                 activity_code = 'G'
                 is_valid = True
 
-        # 🏸 MIDWEEK SPORT RULES
         elif row['type'] == 'Midweek sport':
             flat_points = 20
             activity_code = 'MS'
@@ -196,6 +182,7 @@ def main(token_data, max_date):
             calculated_points = (row['distance_km'] * points_per_km) + flat_points
             
             valid_rows.append({
+                'strava_activity_id': str(row['id']), # ✅ Store the unique Strava activity string ID
                 'initials': initials,
                 'athlete': athlete_name,
                 'team': team_name,
@@ -229,24 +216,18 @@ if __name__ == '__main__':
 
     if whole_team_results:
         all_athletes = pd.concat(whole_team_results, ignore_index=True)
-        all_athletes = all_athletes.sort_values(by=['start_date_dt', 'athlete'])
+        all_athletes = all_athletes.sort_values(by=['start_date', 'athlete'])
         
         all_athletes.columns = all_athletes.columns.str.lower()
         all_athletes['start_date_dt'] = all_athletes['start_date_dt'].astype(str)
-
-        all_athletes = all_athletes.groupby(['athlete', 'start_date_dt', 'activity', 'initials', 'team', 'day'], as_index=False).agg({
-            'distance': 'sum',
-            'points': 'first',         
-            'total_points': 'sum',     
-            'start_date': 'first'      
-        })
         
         records = all_athletes.to_dict(orient='records')
         
         try:
+            # ✅ CHANGE: Dedupes on the individual Strava ID constraint instead of composite daily keys
             supabase.table("activities").upsert(
                 records, 
-                on_conflict="athlete,start_date_dt,activity"
+                on_conflict="strava_activity_id"
             ).execute()
             print(f"🎉 Database sync complete. Successfully upserted {len(records)} entries into Supabase!")
         except Exception as e:
