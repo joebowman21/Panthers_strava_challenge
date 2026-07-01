@@ -136,7 +136,7 @@ def main(token_data, max_date):
         lambda r: r['minutes'] / r['distance_km'] if r['distance_km'] > 0 else 0, axis=1
     )
 
-    # ✅ FIXED: Expanded mappings to handle Garmin specific Run profiles seamlessly
+    # Expanded mappings to handle Garmin specific Run profiles seamlessly
     sport_mappings = {
         'ride': 'Cycle', 
         'run': 'Run', 
@@ -205,4 +205,46 @@ def main(token_data, max_date):
                 'points': points_per_km if points_per_km > 0 else flat_points,
                 'total_points': round(calculated_points, 2),
                 'day': row['start_date'].day,
-                'start_date_dt': str(row
+                'start_date_dt': str(row['start_date_dt']),
+                'start_date': row['start_date'].strftime('%Y-%m-%dT%H:%M:%SZ')
+            })
+
+    if not valid_rows:
+        return None
+
+    return pd.DataFrame(valid_rows)
+
+if __name__ == '__main__':
+    token_data = get_all_tokens()
+    whole_team_results = []
+        
+    for athlete in token_data:
+        athlete_name = athlete["athlete_name"]
+        
+        max_date = get_max_activity_date(athlete_name)
+        print(f"📅 Checking for new activities for {athlete_name} uploaded since: {max_date}")
+        
+        result = main(athlete, max_date)
+        if result is not None and not result.empty:
+            whole_team_results.append(result)
+
+    if whole_team_results:
+        all_athletes = pd.concat(whole_team_results, ignore_index=True)
+        all_athletes = all_athletes.sort_values(by=['start_date', 'athlete'])
+        
+        all_athletes.columns = all_athletes.columns.str.lower()
+        all_athletes['start_date_dt'] = all_athletes['start_date_dt'].astype(str)
+        
+        records = all_athletes.to_dict(orient='records')
+        
+        try:
+            # 🛡️ DEDUPLICATION LOGIC: Safely upserts row-by-row on individual activity IDs
+            supabase.table("activities").upsert(
+                records, 
+                on_conflict="strava_activity_id"
+            ).execute()
+            print(f"🎉 Database sync complete. Successfully upserted {len(records)} entries into Supabase!")
+        except Exception as e:
+            print(f"❌ Failed pushing entries directly to Supabase: {e}")
+    else:
+        print("ℹ️ No new workouts found for any athlete. Database tables remain current.")
