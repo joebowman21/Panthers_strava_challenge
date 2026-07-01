@@ -43,7 +43,7 @@ def get_max_activity_date(athlete_name):
         print(f"ℹ️ Could not fetch max date for {athlete_name}: {e}")
     
     # 🎯 FIX: Changed fallback from year 2000 to July 1st, 2026 midnight UTC
-    return datetime(2026, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
+    return datetime(2026, 7, 1, 0, 0, 0, tzinfo=timezone.utc)
 
 def refresh_access_token(refresh_token):
     response = requests.post(
@@ -109,7 +109,7 @@ def main(token_data, max_date):
     df['start_date'] = pd.to_datetime(df['start_date'], utc=True)
     
     # 🔒 SAFEGUARD: Ensure data pulled is strictly from July 1st onward
-    july_start = datetime(2026, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
+    july_start = datetime(2026, 7, 1, 0, 0, 0, tzinfo=timezone.utc)
     if max_date < july_start:
         max_date = july_start
 
@@ -169,13 +169,13 @@ def main(token_data, max_date):
         elif row['type'] == 'Cycle':
             is_lime = 'lime' in str(row['name']).lower()
             if row['distance_km'] >= 2.0 and not is_lime:
-                points_per_km = 1
+                points_per_km = 1.5
                 activity_code = 'C'
                 is_valid = True
 
         # 🏊‍♂️ SWIMMING RULES
         elif row['type'] == 'Swim':
-            points_per_km = 16
+            points_per_km = 20
             activity_code = 'S'
             is_valid = True
 
