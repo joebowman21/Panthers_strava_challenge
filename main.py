@@ -156,6 +156,9 @@ def main(token_data, max_date):
 
     df_filtered.loc[df_filtered['sport_type'].str.contains('workout|training|weightlifting', case=False, na=False), 'type'] = 'Gym'
 
+    # 📢 VISIBILITY LOG HEADER: Output everything discovered for this specific execution slice
+    print(f"📊 Raw activity dump for {athlete_name}:")
+
     valid_rows = []
     for idx, row in df_filtered.iterrows():
         points_per_km = 0
@@ -191,6 +194,10 @@ def main(token_data, max_date):
             flat_points = 20
             activity_code = 'MS'
             is_valid = True
+
+        # Log entry outcome straight to the standard output console for review
+        status_msg = "✅ PASSED & SCORED" if is_valid else "❌ FILTERED OUT (0 pts)"
+        print(f"   - Activity: '{row['name']}' | Strava Type: {row['sport_type']} | Mapped As: {row['type']} | Duration: {row['minutes']} mins | Distance: {row['distance_km']} km -> {status_msg}")
 
         if is_valid:
             calculated_points = (row['distance_km'] * points_per_km) + flat_points
